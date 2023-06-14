@@ -16,7 +16,8 @@ from vocab import load_vocab
 from vocab import process_text
 import json
 from torchvision import transforms
-from models import Encoder
+from Autoencoder import IEncoder as Encoder
+from efficientnet_pytorch import EfficientNet
 
 def create_answer_mapping(annotations, ans2cat):
     """Returns mapping from question_id to answer.
@@ -42,7 +43,7 @@ def create_answer_mapping(annotations, ans2cat):
     return answers, image_ids
 
 
-def save_dataset(image_dir1, image_dir2, questions, annotations, vocab, ans2cat, output,
+def save_dataset(image_dir1, img_encoder, questions, annotations, vocab, ans2cat, output,
                  im_size=224, max_q_length=20, max_a_length=4,
                  with_answers=False):
     """Saves the Visual Genome images and the questions in a hdf5 file.
@@ -66,8 +67,13 @@ def save_dataset(image_dir1, image_dir2, questions, annotations, vocab, ans2cat,
         annos = json.load(f)
     with open(questions) as f:
         questions = json.load(f)
-    encoder = Encoder()
-    encoder.cuda()
+    if img_encoder == 'resnet':
+        encoder = Encoder()
+        encoder.cuda()
+        im_size = 2048
+    else:
+        encoder = EfficientNet.from_pretrained('efficientnet-b3', advprop=True).cuda()
+        im_size = 1536
 
     # Get the mappings from qid to answers.
     qid2ans, image_ids = create_answer_mapping(annos, ans2cat)
@@ -82,7 +88,7 @@ def save_dataset(image_dir1, image_dir2, questions, annotations, vocab, ans2cat,
     d_indices = h5file.create_dataset(
         "image_indices", (total_questions,), dtype='i')
     d_images = h5file.create_dataset(
-        "images", (total_images, 2048, 49), dtype='f')
+        "images", (total_images, im_size, 7, 7), dtype='f')
 #     d_images = h5file.create_dataset(
 #        "images", (total_images, im_size, im_size, 3), dtype='f')
     d_answers = h5file.create_dataset(
@@ -125,17 +131,17 @@ def save_dataset(image_dir1, image_dir2, questions, annotations, vocab, ans2cat,
                 image = Image.open(os.path.join(image_dir1, path1)).convert('RGB')
             elif os.path.isfile(os.path.join(image_dir1, path2)):
                 image = Image.open(os.path.join(image_dir1, path2)).convert('RGB')
-            #if os.path.isfile(os.path.join(image_dir2, path1)):
-            #    image = Image.open(os.path.join(image_dir2, path1)).convert('RGB')
-            #else:
-            #    image = Image.open(os.path.join(image_dir2, path2)).convert('RGB')
+
             
             image = transform(image).unsqueeze(0).cuda()
 #             image = transform(image)
             # print()
             # exit()
 #             d_images[i_index, :, :] = np.array(image)
-            d_images[i_index, :, :] = encoder(image).squeeze().cpu().detach().numpy()
+            if img_encoder == 'resnet':
+                d_images[i_index, :, :] = encoder(image).squeeze().cpu().detach().numpy()
+            else:
+                d_images[i_index, :, :] = encoder.extract_features(image).squeeze().cpu().detach().numpy()
             done_img2idx[image_id] = i_index
             i_index += 1
         # print(entry['question'])
@@ -160,6 +166,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # Inputs.
+    parser.add_argument('--mode', type=str, choices=['Train', 'Test'], default='Train')
+    parser.add_argument('--image-encoder', type=str, choices=['resnet', 'effnet'], default='effnet')
     parser.add_argument('--image-dir', type=str, default='data/vqa/train2014',
                         help='directory for resized images')
     parser.add_argument('--questions', type=str,
@@ -177,7 +185,7 @@ if __name__ == '__main__':
 
     # Outputs.
     parser.add_argument('--output', type=str,
-                        default='data/processed/latest_train_img_iq_dataset.hdf5',
+                        default='data/processed/latest_train_test_img_iq_dataset.hdf5',
                         help='directory for resized images.')
     parser.add_argument('--cat2name', type=str,
                         default='data/processed/cat2name.json',
@@ -212,23 +220,19 @@ if __name__ == '__main__':
                 'food', 'shape', 
                 'other', 'location', 
                 'animal', 'spatial', 'activity']
-#    for key in cat_keys:
-#        if key not in val_cat:
-#            del cat2ans[key]
-#        else:
-#            print(key)
-    
-    # print(cat2ans.keys())
-    # exit()
+
     cats = sorted(cat2ans.keys())
-#     with open(args.cat2name, 'w') as f:
-#         json.dump(cats, f)
+
+    isTrain = args.mode == 'Train'
     for cat in cat2ans:
-        if cat in val_cat:
+        if (cat in val_cat) and isTrain:
+            continue
+        elif (cat not in val_cat) and not isTrain:
             continue
         for ans in cat2ans[cat]:
             ans2cat[ans] = cats.index(cat)
-    save_dataset(args.image_dir, 'data/vqa/val2014', args.questions, args.annotations, args.vocab_path,
+
+    save_dataset(args.image_dir, args.image_encoder, args.questions, args.annotations, args.vocab_path,
                  ans2cat, args.output, im_size=args.im_size,
                  max_q_length=args.max_q_length, max_a_length=args.max_a_length)
     print(('Wrote dataset to %s' % args.output))

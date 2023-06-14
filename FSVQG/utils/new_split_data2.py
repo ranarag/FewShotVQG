@@ -177,6 +177,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # Inputs.
+    parser.add_argument('--mode', type=str, choices=['Train', 'Test'], default='Train')
     parser.add_argument('--image-dir', type=str, default='data/vqa/train2014',
                         help='directory for resized images')
     parser.add_argument('--questions', type=str,
@@ -240,8 +241,11 @@ if __name__ == '__main__':
     cats = sorted(cat2ans.keys())
 #     with open(args.cat2name, 'w') as f:
 #         json.dump(cats, f)
+    isTrain = args.mode == 'Train'
     for cat in cat2ans:
-        if cat in val_cat:
+        if (cat in val_cat) and isTrain:
+            continue
+        elif (cat not in val_cat) and not isTrain:
             continue
         for ans in cat2ans[cat]:
             ans2cat[ans] = cats.index(cat)

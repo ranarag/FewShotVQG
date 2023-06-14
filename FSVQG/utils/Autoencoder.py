@@ -17,11 +17,8 @@ class IEncoder(nn.Module):
         self.net = nn.Sequential(*list(self.net.children())[:-2])
         self.dim = 2048
     def forward(self, x):
-#         print("HOLA")
         x = self.net(x)
-#         print(x.size())
-#         x = x.view(x.size(0), x.size(1), -1)
-#         print(x.size())
+        x = x.view(x.size(0), x.size(1), -1)
         return x
         
         

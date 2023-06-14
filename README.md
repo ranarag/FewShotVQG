@@ -20,7 +20,7 @@ mkdir -p data/processed
 
 ### Preparing Data
 
-Download the train and validation sets of the <a href="https://visualqa.org/download.html">VQA Dataset</a>.
+Download the train and test sets of the <a href="https://visualqa.org/download.html">VQA Dataset</a>.
 
 In order to prepare the data for training and evaluation, follow these set of commands:
 
@@ -29,24 +29,31 @@ In order to prepare the data for training and evaluation, follow these set of co
 python utils/vocab.py
 
 # Create the hdf5 dataset.
-python utils/store_dataset.py
-python utils/store_dataset.py --output data/processed/iq_val_dataset.hdf5 --questions data/vqa/v2_OpenEnded_mscoco_val2014_questions.json --annotations data/vqa/v2_mscoco_val2014_annotations.json --image-dir data/vqa/val2014
+python utils/store_dataset.py --mode Train --image-encoder resnet
+python utils/store_dataset.py --output data/processed/iq_val_dataset.hdf5 --questions data/vqa/v2_OpenEnded_mscoco_val2014_questions.json --annotations data/vqa/v2_mscoco_val2014_annotations.json --image-dir data/vqa/val2014 --mode Test --image-encoder resnet
 ```
 
 ### Training and Evaluation
 
-For training and validation, run the following command:
+For training the answer + category model, run the following command:
 
 ```
-python meta_train_cats_new.py
+python meta_train_ans_cats.py --mode Train --model <model_name> --network resnet --bert-embed '' --bert-ans-embed '' --train_query 10 --dataset-type vqa
 ```
+
+For evaluation, set the *--mode*  argument to *Test*.
+
+Similarly, to run the category model use the file **meta_train_cats.py** and the answer model **meta_train_ans.py** files respectively.
+
+To run the corresponding **NoSS** versions, of the corresponding models set the *--scaling-shifting* argument to **True**.
+
 
 ## VQG-23
 The VQG-23 dataset can be found in the folder named VQG-23. The folder contains the following two files:
 
 [1] - proposed_train_splits.json – contains a json dict of instances for the training split of the VQG-23 dataset.
 
-[2] - proposed_train_splits.json – contains a json dict of instances for the training split of the VQG-23 dataset.
+[2] - proposed_test_splits.json – contains a json dict of instances for the testing split of the VQG-23 dataset.
 
 Each entry in the dict of (1) and (2) has question-id as key and another dict as value. The value dict contains the following entries:
  - **image_id**:  The filename of the image
