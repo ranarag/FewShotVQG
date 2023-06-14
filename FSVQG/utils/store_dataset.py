@@ -185,7 +185,7 @@ if __name__ == '__main__':
 
     # Outputs.
     parser.add_argument('--output', type=str,
-                        default='data/processed/latest_train_test_img_iq_dataset.hdf5',
+                        default='data/processed/train_resnet_img_dataset.hdf5',
                         help='directory for resized images.')
     parser.add_argument('--cat2name', type=str,
                         default='data/processed/cat2name.json',

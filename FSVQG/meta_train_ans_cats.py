@@ -26,7 +26,6 @@ torch.cuda.set_device(0)
 
 from termcolor import cprint, colored
 
-# from models import Autoencoder, CategoryEncoder, Encoder, Decoder
 from tqdm import tqdm
 data_transforms = transforms.Compose([
     transforms.Resize((224, 224)),
@@ -83,10 +82,7 @@ def inference(test_batch, word_dict, learner, args):
     gts = []
     with torch.no_grad():
         
-#         recast_embeds, recast_bias = recast_answer_embeds(cat_embeds, cat_bias, img_test.size(2))
 
-#         n_img_features = img_test.mul(recast_embeds) + recast_bias
-#         n_img_features = n_img_features.permute(0, 2, 1)
         if args.decoder_type == 'lstm':
             if args.scaling_shifting:
                 n_img_features = learner.get_img_embeds(img_test, cat_test, ans_test, alen_test)
@@ -97,15 +93,12 @@ def inference(test_batch, word_dict, learner, args):
 
             for i in range(img_test.size(0)):
                 new_img_features = n_img_features[i].unsqueeze(0)
-#                 print(new_img_features.size())
 
-                #if args.decoder_type == 'lstm':
                 if args.scaling_shifting:
                     new_img_features = new_img_features.expand(beam_size, new_img_features.size(1), new_img_features.size(2))
                     outputs, alphas = learner.decoder.caption(new_img_features, word_dict, beam_size)
                 else:
                     new_img_features = new_img_features.expand(beam_size, new_img_features.size(1), new_img_features.size(2))
-    #                 print(cat_embeds.size())
                     new_tot_embeds = tot_embeds[i].unsqueeze(0)
                     new_tot_embeds = new_tot_embeds.expand(beam_size, new_tot_embeds.size(1))
                     outputs, alphas = learner.decoder.caption(new_img_features, word_dict, beam_size, new_tot_embeds)
@@ -173,26 +166,8 @@ def main(args):
     ans_dict = load_vocab(args.vocab_path_ans)
     ans_size = len(ans_dict)
 
-#     ans_embedding = get_bert_embedding('840B',
-#                                         768,
-#                                         ans_dict)
 
-#     embedding = get_bert_embedding('840B',
-#                                     768,
-#                                     word_dict)
-#     print("DONE fetching")
-#     with open('new_bert_embedding7w_ans.pkl', 'wb') as fid:
-#         pkl.dump(ans_embedding, fid)
-# #         ans_embedding = pkl.load(fid)
-# # #     exit()
-#     with open('new_bert_embedding7w.pkl', 'wb') as fid:
-#         pkl.dump(embedding, fid)
-# #     exit()
-# #         embedding = pkl.load(fid)
-#     print("DONE SAVING")
-#     exit()
-    decoder_model_path = os.path.join('model/meta', 'nbn_decoder', args.decoder_model)
-    answer_enc_model_path = os.path.join('model/meta', 'nbn_answer_encoder', args.cat_model)
+
     lm_encoder = 'nobert'
     embedding=None
     if len(args.bert_embed):
@@ -213,7 +188,6 @@ def main(args):
         transforms.ToTensor()])
     if args.dataset_type == '7w':
         trainset = datasets.get_class_obj("Val",args.dataset,
-                                          #'data/processed/val_img_id_resnet.hdf5', 
                                           args.qid2data,
                                           dataset_type=args.dataset_type,
                                           max_examples=None)
@@ -225,7 +199,6 @@ def main(args):
                                           args.test_query)
 
         train_loader = DataLoader(trainset,
-                                #   batch_size = args.batch_size,
                                   batch_sampler=train_sampler,
                                   num_workers=8,
                                   collate_fn=newcollate_fn)
@@ -246,9 +219,9 @@ def main(args):
                                   batch_sampler=train_sampler,
                                   num_workers=8,
                                   collate_fn=collate_fn)
-                            #   pin_memory=True)
 
-    valset = datasets.get_class_obj("Val",args.val_dataset, #'data/processed/val_img_id_resnet.hdf5', 
+
+    valset = datasets.get_class_obj("Val",args.val_dataset, 
                               args.qid2data,
                              dataset_type=args.dataset_type,
                              max_examples=None)
@@ -282,14 +255,7 @@ def main(args):
         
         if args.mode == 'Test':
             score = meta_test(lm_encoder, nlge, vqg_net, cross_entropy_loss, valset, word_dict, ans_dict, args, None)
-            exit()
-#             break
-#         if score > best_score:
-#             best_score = score
-#             torch.save(vqg_net.state_dict(),
-#                         os.path.join(args.model_path,
-#                         'best_{}_{}_new{}shot_ans_cats.pkl'.format(args.network, lm_encoder, args.train_query)))
-#         #Uncomment for meta-testing after each epoch
+
             
 
 def meta_train(runs, nlge, maml, optimizer, cross_entropy_loss,
@@ -351,14 +317,7 @@ def meta_train(runs, nlge, maml, optimizer, cross_entropy_loss,
             meta_train_error.update(evaluation_error.item())
             if counter == meta_batch_size:
                 break
-#                 # Average the accumulated gradients and optimize
-#                 counter = 0
-#                 for name, param in maml.named_parameters():
-#                     if param.requires_grad:
-#                         param.grad.data.mul_(1.0 / meta_batch_size)
-                
-#                 optimizer.step()
-#                 optimizer.zero_grad()
+
 
         tqdm_gen.set_description('Error = {}'.format(meta_train_error.avg))
 
@@ -555,8 +514,6 @@ if __name__ == "__main__":
     parser.add_argument('--decoder-type', choices=['lstm', 'transformer'], default='lstm')
     parser.add_argument('--bert-embed', type=str, default="bert_embedding.pkl")
     parser.add_argument('--bert-ans-embed', type=str, default="bert_embedding_ans.pkl")
-#     parser.add_argument('--bert-embed', type=str, default="")
-#     parser.add_argument('--bert-ans-embed', type=str, default="")
     parser.add_argument('--tf', action='store_true', default=False,
                         help='Use teacher forcing when training LSTM (default: False)')
 
@@ -583,8 +540,6 @@ if __name__ == "__main__":
     parser.add_argument('--num-categories', type=int, default=16,
                         help='Number of answer types we use.')
     
-#     parser.add_argument('--model', type=str, default='model/meta/epoch87_effnet_bert_new1shot_ans_cats.pkl',
-#                         help='path to model')
     parser.add_argument('--model', type=str, default='',
                         help='path to model')
     parser.add_argument('--model-path', type=str, default='model/meta/',

@@ -27,10 +27,14 @@ In order to prepare the data for training and evaluation, follow these set of co
 ```
 # Create the vocabulary file.
 python utils/vocab.py
+python utils/vocab_ans.py
+
+# Get the Bert embeddings(optional)
+python get_bert_embeds_from_vocab.py 
 
 # Create the hdf5 dataset.
 python utils/store_dataset.py --mode Train --image-encoder resnet
-python utils/store_dataset.py --output data/processed/iq_val_dataset.hdf5 --questions data/vqa/v2_OpenEnded_mscoco_val2014_questions.json --annotations data/vqa/v2_mscoco_val2014_annotations.json --image-dir data/vqa/val2014 --mode Test --image-encoder resnet
+python utils/store_dataset.py --output data/processed/val_resnet_img_dataset.hdf5 --questions data/vqa/v2_OpenEnded_mscoco_val2014_questions.json --annotations data/vqa/v2_mscoco_val2014_annotations.json --image-dir data/vqa/val2014 --mode Test --image-encoder resnet
 ```
 
 ### Training and Evaluation
@@ -38,7 +42,7 @@ python utils/store_dataset.py --output data/processed/iq_val_dataset.hdf5 --ques
 For training the answer + category model, run the following command:
 
 ```
-python meta_train_ans_cats.py --mode Train --model <model_name> --network resnet --bert-embed '' --bert-ans-embed '' --train_query 10 --dataset-type vqa
+python meta_train_ans_cats.py --mode Train --model <model_name> --network resnet --bert-embed '' --bert-ans-embed '' --train_query 10 --dataset-type vqg --dataset data/processed/train_resnet_img_dataset.hdf5 --val-dataset data/processed/val_resnet_img_dataset.hdf5
 ```
 
 For evaluation, set the *--mode*  argument to *Test*.
